@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/point_maker" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
