@@ -61,7 +61,7 @@ class PolygonCreator:
 
         # Declare instance attributes
         self.actions = []
-        self.menu = self.tr(u'&Point Maker')
+        self.menu = self.tr(u'&Polygon Creator')
 
         # Check if plugin was started the first time in current QGIS session
         # Must be set in initGui() to survive plugin reloads
@@ -160,10 +160,10 @@ class PolygonCreator:
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
 
-        icon_path = ':/plugins/point_maker/icon.png'
+        icon_path = ':/plugins/polygon_creator/icon.png'
         self.add_action(
             icon_path,
-            text=self.tr(u'Create points using coordinate values'),
+            text=self.tr(u'Create polygons using coordinate values'),
             callback=self.run,
             parent=self.iface.mainWindow())
 
@@ -175,7 +175,7 @@ class PolygonCreator:
         """Removes the plugin menu item and icon from QGIS GUI."""
         for action in self.actions:
             self.iface.removePluginMenu(
-                self.tr(u'&Point Maker'),
+                self.tr(u'&Polygon Creator'),
                 action)
             self.iface.removeToolBarIcon(action)
 

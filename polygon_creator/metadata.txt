@@ -5,7 +5,7 @@
 [general]
 name=Polygon Creator
 qgisMinimumVersion=3.0
-description=This plugin creates points using coordinate values
+description=This plugin creates polygons using coordinate values
 version=0.1
 author=mjkim
 email=minji7658@gmail.com

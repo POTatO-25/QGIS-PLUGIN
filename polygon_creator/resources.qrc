@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/plugins/point_maker" >
+    <qresource prefix="/plugins/polygon_creator" >
         <file>icon.png</file>
     </qresource>
 </RCC>
