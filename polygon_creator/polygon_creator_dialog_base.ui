@@ -11,13 +11,13 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Point Maker</string>
+   <string>Polygon Creator</string>
   </property>
   <widget class="QDialogButtonBox" name="button_box">
    <property name="geometry">
     <rect>
      <x>30</x>
-     <y>240</y>
+     <y>250</y>
      <width>341</width>
      <height>32</height>
     </rect>
@@ -56,6 +56,19 @@
    </property>
    <property name="text">
     <string>import CSV</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="label_count">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>260</y>
+     <width>161</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>TextLabel</string>
    </property>
   </widget>
  </widget>

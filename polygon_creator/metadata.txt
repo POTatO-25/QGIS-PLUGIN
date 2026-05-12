@@ -10,7 +10,7 @@ version=0.1
 author=mjkim
 email=minji7658@gmail.com
 
-about=This plugin creates points using coordinate values.
+about=This plugin creates polygons using coordinate values.
 
 tracker=https://github.com/POTatO-25/QGIS-PLUGIN/ISSUES
 repository=https://github.com/POTatO-25/QGIS-PLUGIN

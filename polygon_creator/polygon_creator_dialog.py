@@ -28,6 +28,7 @@ from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets # 버튼, 창, 라벨, 입력창, 체크박스 등의 모음
 from PyQt5.QtWidgets import QFileDialog # 탐색기 창 띄울 시 사용
 from PyQt5.QtCore import QVariant # 속성 데이터의 자료형 지정 시 사용
+from PyQt5.QtWidgets import QDialogButtonBox
 from qgis.core import (
     QgsVectorLayer, # 벡터 레이어(점, 선, 폴리곤) 생성
     QgsFeature, # 객체
@@ -52,21 +53,41 @@ class PolygonCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
-        self.pushButton_csv.clicked.connect(self.load_csv)
+        self.label_count.setText("") # TextLabel의 기본값을 공백으로 설정
+        self.pushButton_csv.clicked.connect(self.load_csv) # import CSV 버튼 누르면 CSV 파일 불러와서 데이터 카운트만 세서 왼쪽 하단에 보여주기
+        self.ok_button = self.button_box.button(QDialogButtonBox.Ok) # 확인 버튼 객체만 가져오기
+        self.ok_button.clicked.connect(self.create_polygon) # 확인 버튼 누르면 좌표값 추출하고 폴리곤 생성해서 화면에 보여주기
     
     def load_csv(self):
         print("import CSV 버튼 클릭")
         file_path, _ = QFileDialog.getOpenFileName( # QFileDialog.getOpenFileName : 파일 탐색기 열기
             self,
             "CSV 파일 선택", # 창 제목
-            "", # 초기 폴더 위치(비워둘 경우 기본 위치)
+            "C:/Users/user/Desktop/kmj/2026.05/0511 (M)/QGIS 플러그인 개발", # 초기 폴더 위치(비워둘 경우 기본 위치)
             "CSV Files (*.csv)" # csv 파일만 보이게 필터링
         )
 
         if file_path:
             self.lineEdit_csv.setText(file_path)
-            # csv 읽기
-            features = []
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    lines = f.readlines()
+                    count = len(lines) - 1 if len(lines) > 0 else 0
+                    print(f"데이터 총 개수: {count}")
+                    self.label_count.setText(f"data count: {count}")
+            except Exception as e:
+                print(f"파일 읽기 오류: {e}")
+
+    def create_polygon(self):
+        file_path = self.lineEdit_csv.text()
+
+        if not file_path or not os.path.exists(file_path):
+            print("파일 경로가 올바르지 않습니다.")
+            return
+
+        # csv 읽기
+        features = []
+        try:
             with open(file_path, newline='', encoding='utf-8-sig') as csvfile:
                 reader = csv.DictReader(csvfile) # csv 파일을 딕셔너리 형태로 읽기
                 for row in reader: # 한 줄씩 반복
@@ -95,21 +116,24 @@ class PolygonCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     except Exception as e:
                         print(f"Error parsing row: {e}")
                         continue
-            # 메모리 레이어 생성
-            # Polygon : 폴리곤 레이어, EPSG:4326 : 좌표계 지정(WGS84 위경도), CSV_Polygons : 레이어 이름, memory : 임시 메모리 레이어(파일 저장 안 된 상태)
-            v1 = QgsVectorLayer("Polygon?crs=EPSG:4326", "CSV_Polygons", "memory")
-            pr = v1.dataProvider()
-            print("메모리 레이어 생성 완료")
-            # 속성 필드 생성 및 레이어에 추가
-            pr.addAttributes([QgsField("block_id", QVariant.String)])
-            pr.addAttributes([QgsField("type", QVariant.String)]) # QVariant.String : 문자열
-            v1.updateFields() # 속성 필드 추가 요청
-            print("속성 필드 생성 완료")
-            # 피처 추가
-            pr.addFeatures(features) # 위에서 만든 폴리곤들을 레이어에 추가
-            v1.updateExtents()
-            print("피처 추가 완료")
-            # 현재 QGIS 지도창에 레이어 추가
-            QgsProject.instance().addMapLayer(v1) 
-            print("폴리곤 생성 완료!")
-
+        except Exception as e:
+            print(f"파일 열기 오류: {e}")
+            return
+        
+        # 메모리 레이어 생성
+        # Polygon : 폴리곤 레이어, EPSG:4326 : 좌표계 지정(WGS84 위경도), Polygons : 레이어 이름, memory : 임시 메모리 레이어(파일 저장 안 된 상태)
+        v1 = QgsVectorLayer("Polygon?crs=EPSG:4326", "Polygons", "memory")
+        pr = v1.dataProvider()
+        print("메모리 레이어 생성 완료")
+        # 속성 필드 생성 및 레이어에 추가
+        pr.addAttributes([QgsField("block_id", QVariant.String)])
+        pr.addAttributes([QgsField("type", QVariant.String)]) # QVariant.String : 문자열
+        v1.updateFields() # 속성 필드 추가 요청
+        print("속성 필드 생성 완료")
+        # 피처 추가
+        pr.addFeatures(features) # 위에서 만든 폴리곤들을 레이어에 추가
+        v1.updateExtents()
+        print("피처 추가 완료")
+        # 현재 QGIS 지도창에 레이어 추가
+        QgsProject.instance().addMapLayer(v1) 
+        print("폴리곤 생성 완료!")
