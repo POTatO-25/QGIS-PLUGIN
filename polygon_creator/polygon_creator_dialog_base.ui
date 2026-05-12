@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>PointMakerDialogBase</class>
- <widget class="QDialog" name="PointMakerDialogBase">
+ <class>PolygonCreatorDialogBase</class>
+ <widget class="QDialog" name="PolygonCreatorDialogBase">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -64,7 +64,7 @@
   <connection>
    <sender>button_box</sender>
    <signal>accepted()</signal>
-   <receiver>PointMakerDialogBase</receiver>
+   <receiver>PolygonCreatorDialogBase</receiver>
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
@@ -80,7 +80,7 @@
   <connection>
    <sender>button_box</sender>
    <signal>rejected()</signal>
-   <receiver>PointMakerDialogBase</receiver>
+   <receiver>PolygonCreatorDialogBase</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">

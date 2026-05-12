@@ -3,7 +3,7 @@
 # This file should be included when you package your plugin.# Mandatory items:
 
 [general]
-name=Point Maker
+name=Polygon Creator
 qgisMinimumVersion=3.0
 description=This plugin creates points using coordinate values
 version=0.1
