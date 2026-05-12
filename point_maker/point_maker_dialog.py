@@ -25,13 +25,22 @@
 import os
 
 from qgis.PyQt import uic
-from qgis.PyQt import QtWidgets
-from PyQt5.QtWidgets import QFileDialog
+from qgis.PyQt import QtWidgets # 버튼, 창, 라벨, 입력창, 체크박스 등의 모음
+from PyQt5.QtWidgets import QFileDialog # 탐색기 창 띄울 시 사용
+from PyQt5.QtCore import QVariant # 속성 데이터의 자료형 지정 시 사용
+from qgis.core import (
+    QgsVectorLayer, # 벡터 레이어(점, 선, 폴리곤) 생성
+    QgsFeature, # 객체
+    QgsField, 
+    QgsGeometry, # 실제 공간 도형
+    QgsPointXY, # 좌표점 생성 
+    QgsProject # 현재 QGIS 프로젝트 접근
+)
+import csv # csv 읽기용 python 기본 라이브러리
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'point_maker_dialog_base.ui'))
-
 
 class PointMakerDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
@@ -56,3 +65,51 @@ class PointMakerDialog(QtWidgets.QDialog, FORM_CLASS):
 
         if file_path:
             self.lineEdit_csv.setText(file_path)
+            # csv 읽기
+            features = []
+            with open(file_path, newline='', encoding='utf-8-sig') as csvfile:
+                reader = csv.DictReader(csvfile) # csv 파일을 딕셔너리 형태로 읽기
+                for row in reader: # 한 줄씩 반복
+                    try:
+                        # 좌표값 추출
+                        x1, y1 = float(row['x1']), float(row['y1']) # csv 파일의 문자열 값을 숫자로 변환
+                        x2, y2 = float(row['x2']), float(row['y2'])
+                        x3, y3 = float(row['x3']), float(row['y3'])
+                        x4, y4 = float(row['x4']), float(row['y4'])
+                        print("좌표값 추출 완료")
+                        # 폴리곤 좌표 (마지막 점은 첫 점과 닫기)
+                        points = [
+                            QgsPointXY(x1, y1),
+                            QgsPointXY(x2, y2),
+                            QgsPointXY(x3, y3),
+                            QgsPointXY(x4, y4),
+                            QgsPointXY(x1, y1)
+                        ]
+                        feat = QgsFeature() # 폴리곤 객체 하나 생성
+                        feat.setGeometry(QgsGeometry.fromPolygonXY([points])) # 점 리스트 --> 폴리곤
+                        feat.setAttributes([
+                            row['block_id'],
+                            row['type']
+                        ]) # Id, type 입력
+                        features.append(feat) # features 리스트에 저장
+                    except Exception as e:
+                        print(f"Error parsing row: {e}")
+                        continue
+            # 메모리 레이어 생성
+            # Polygon : 폴리곤 레이어, EPSG:4326 : 좌표계 지정(WGS84 위경도), CSV_Polygons : 레이어 이름, memory : 임시 메모리 레이어(파일 저장 안 된 상태)
+            v1 = QgsVectorLayer("Polygon?crs=EPSG:4326", "CSV_Polygons", "memory")
+            pr = v1.dataProvider()
+            print("메모리 레이어 생성 완료")
+            # 속성 필드 생성 및 레이어에 추가
+            pr.addAttributes([QgsField("block_id", QVariant.String)])
+            pr.addAttributes([QgsField("type", QVariant.String)]) # QVariant.String : 문자열
+            v1.updateFields() # 속성 필드 추가 요청
+            print("속성 필드 생성 완료")
+            # 피처 추가
+            pr.addFeatures(features) # 위에서 만든 폴리곤들을 레이어에 추가
+            v1.updateExtents()
+            print("피처 추가 완료")
+            # 현재 QGIS 지도창에 레이어 추가
+            QgsProject.instance().addMapLayer(v1) 
+            print("폴리곤 생성 완료!")
+
