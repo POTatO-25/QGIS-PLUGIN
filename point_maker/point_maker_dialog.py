@@ -26,6 +26,7 @@ import os
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
+from PyQt5.QtWidgets import QFileDialog
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
@@ -42,3 +43,16 @@ class PointMakerDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.pushButton_csv.clicked.connect(self.load_csv)
+    
+    def load_csv(self):
+        print("import CSV 버튼 클릭")
+        file_path, _ = QFileDialog.getOpenFileName( # QFileDialog.getOpenFileName : 파일 탐색기 열기
+            self,
+            "CSV 파일 선택", # 창 제목
+            "", # 초기 폴더 위치(비워둘 경우 기본 위치)
+            "CSV Files (*.csv)" # csv 파일만 보이게 필터링
+        )
+
+        if file_path:
+            self.lineEdit_csv.setText(file_path)
