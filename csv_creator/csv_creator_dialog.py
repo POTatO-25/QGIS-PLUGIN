@@ -26,11 +26,22 @@ import os
 
 from qgis.PyQt import uic
 from qgis.PyQt import QtWidgets
+from PyQt5.QtWidgets import QFileDialog
+from PyQt5.QtCore import QVariant
+from PyQt5.QtWidgets import QDialogButtonBox
+from qgis.core import (
+    QgsVectorLayer,
+    QgsFeature,
+    QgsField,
+    QgsGeometry,
+    QgsPointXY,
+    QgsProject
+)
+import csv
 
 # This loads your .ui file so that PyQt can populate your plugin with the elements from Qt Designer
 FORM_CLASS, _ = uic.loadUiType(os.path.join(
     os.path.dirname(__file__), 'csv_creator_dialog_base.ui'))
-
 
 class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
     def __init__(self, parent=None):
@@ -42,3 +53,31 @@ class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.label_count.setText("")
+        self.pushButton_shp.clicked.connect(self.load_shp)
+        # self.ok_button = self.button_box.button(QDialogButtonBox.Ok)
+        # self.ok_button.clicked.connect(self.create_csv)
+
+    def load_shp(self):
+        print("import SHP 버튼 클릭")
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "SHP 파일 선택",
+            "C:/Users/user/Desktop/kmj/2026.05/0514 (T)/QGIS 플러그인 개발",
+            "Shape Files (*.shp)"
+        )
+
+        if file_path:
+            self.lineEdit_shp.setText(file_path)
+            try:
+                layer = QgsVectorLayer(file_path, "tactile_blocks", "ogr") # ogr : shapefile 읽는 드라이버
+                if not layer.isValid():
+                    print("레이어 읽기 실패")
+                else:
+                    print("레이어 읽기 성공")
+                for feature in layer.getFeatures(): # getFeatures() : 속성 테이블의 각 행을 하나씩 가져오는 역할
+                    block_id = feature["block_id"]
+                    ty = feature["type"]
+                    print(block_id, ty)
+            except Exception as e:
+                print(f"파일 읽기 오류: {e}")
