@@ -55,15 +55,15 @@ class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.setupUi(self)
         self.label_count.setText("")
         self.pushButton_shp.clicked.connect(self.load_shp)
-        # self.ok_button = self.button_box.button(QDialogButtonBox.Ok)
-        # self.ok_button.clicked.connect(self.create_csv)
+        self.ok_button = self.button_box.button(QDialogButtonBox.Ok)
+        self.ok_button.clicked.connect(self.create_csv)
 
     def load_shp(self):
         print("import SHP 버튼 클릭")
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "SHP 파일 선택",
-            "C:/Users/user/Desktop/kmj/2026.05/0514 (T)/QGIS 플러그인 개발",
+            "C:/Users/user/Desktop/kmj/2026.05/0514 (T)/QGIS 플러그인 개발/data",
             "Shape Files (*.shp)"
         )
 
@@ -75,9 +75,72 @@ class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     print("레이어 읽기 실패")
                 else:
                     print("레이어 읽기 성공")
-                for feature in layer.getFeatures(): # getFeatures() : 속성 테이블의 각 행을 하나씩 가져오는 역할
-                    block_id = feature["block_id"]
-                    ty = feature["type"]
-                    print(block_id, ty)
+
+                    # featureCount() : 데이터 개수
+                    count = layer.featureCount() 
+                    print(f"데이터 개수: {count}")
+                    self.label_count.setText(f"data count: {count}")
             except Exception as e:
                 print(f"파일 읽기 오류: {e}")
+
+    def create_csv(self):
+        csv_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "CSV 저장",
+            "",
+            "CSV Files (*.csv)"
+        )
+
+        if csv_path:
+            file_path = self.lineEdit_shp.text()
+            layer = QgsVectorLayer(file_path, "tactile_blocks", "ogr") # ogr : shapefile 읽는 드라이버
+
+            with open(csv_path, mode="w", newline="", encoding="utf-8-sig") as file:
+                writer = csv.writer(file)
+
+                # 헤더
+                writer.writerow([
+                    "block_id",
+                    "type",
+                    "x1", "y1",
+                    "x2", "y2",
+                    "x3", "y3",
+                    "x4", "y4",
+                    "center_x",
+                    "center_y"
+                ])
+
+                for feature in layer.getFeatures():
+                    geom = feature.geometry()
+                    multipolygon = geom.asMultiPolygon()
+                    points = multipolygon[0][0]
+
+                    # 중심점 계산
+                    centroid = geom.centroid()
+                    center_point = centroid.asPoint()
+
+                    center_x = round(center_point.x(), 6)
+                    center_y = round(center_point.y(), 6)
+
+                    block_id = feature["block_id"]
+                    ty = feature["type"]
+                    x1 = points[0].x()
+                    y1 = points[0].y()
+                    x2 = points[3].x()
+                    y2 = points[3].y()
+                    x3 = points[2].x()
+                    y3 = points[2].y()
+                    x4 = points[1].x()
+                    y4 = points[1].y()
+
+                    writer.writerow([
+                        block_id,
+                        ty,
+                        x1, y1,
+                        x2, y2,
+                        x3, y3,
+                        x4, y4,
+                        center_x, 
+                        center_y
+                    ])
+            print("CSV 저장 완료")
