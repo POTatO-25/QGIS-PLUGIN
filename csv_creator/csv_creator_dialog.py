@@ -100,7 +100,6 @@ class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
 
                 # 헤더
                 writer.writerow([
-                    "block_id",
                     "type",
                     "x1", "y1",
                     "x2", "y2",
@@ -122,8 +121,7 @@ class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     center_x = round(center_point.x(), 6)
                     center_y = round(center_point.y(), 6)
 
-                    block_id = feature["block_id"]
-                    ty = feature["type"]
+                    ty = feature["Shape_Type"]
                     x1 = points[0].x()
                     y1 = points[0].y()
                     x2 = points[3].x()
@@ -134,7 +132,6 @@ class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     y4 = points[1].y()
 
                     writer.writerow([
-                        block_id,
                         ty,
                         x1, y1,
                         x2, y2,
