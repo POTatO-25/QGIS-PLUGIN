@@ -53,9 +53,13 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         # http://qt-project.org/doc/qt-4.8/designer-using-a-ui-file.html
         # #widgets-and-dialogs-with-auto-connect
         self.setupUi(self)
+        self.label_thresholdText.setText("")
         self.pushButton_gt.clicked.connect(self.load_gt)
         self.pushButton_pred.clicked.connect(self.load_pred)
-
+        self.ok_button = self.button_box.button(QDialogButtonBox.Ok)
+        self.button_box.accepted.disconnect() # 기본 dialog 종료 기능 제거
+        self.ok_button.clicked.connect(self.evaluate_polygon)
+        self.doubleSpinBox.valueChanged.connect(self.check_threshold)
 
     def load_gt(self):
         print("import GT 버튼 클릭")
@@ -69,7 +73,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         if file_path:
             self.lineEdit_gt.setText(file_path)
             try:
-                layer = QgsVectorLayer(file_path, "tactile_blocks_gt", "ogr")
+                layer = QgsVectorLayer(file_path, "gt", "ogr")
                 if not layer.isValid():
                     print("GT 레이어 읽기 실패")
                 else:
@@ -94,7 +98,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         if file_path:
             self.lineEdit_pred.setText(file_path)
             try:
-                layer = QgsVectorLayer(file_path, "tactile_blocks_pred", "ogr")
+                layer = QgsVectorLayer(file_path, "pred", "ogr")
                 if not layer.isValid():
                     print("Pred 레이어 읽기 실패")
                 else:
@@ -107,3 +111,159 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
             except Exception as e:
                 print(f"Pred 파일 읽기 오류: {e}")
     
+    def evaluate_polygon(self):
+        file_pathGt = self.lineEdit_gt.text()
+        file_pathPred = self.lineEdit_pred.text()
+
+        if not os.path.exists(file_pathGt) or not os.path.exists(file_pathPred):
+            print("파일 경로가 올바르지 않습니다.")
+            return
+        
+        # 0. Shape 파일 읽기
+        gt_layer = QgsVectorLayer(file_pathGt, "gt", "ogr")
+        pred_layer = QgsVectorLayer(file_pathPred, "pred", "ogr")
+
+        if not gt_layer.isValid() or not pred_layer.isValid():
+            print("레이어 로드 실패")
+            return
+
+        # 1. 좌표계 동일한지 확인
+        if gt_layer.crs() != pred_layer.crs():
+            print("좌표계가 다릅니다.")
+            return
+
+        # 2. IoU Threshold 값 가져오기
+        iou_threshold = self.doubleSpinBox.value()
+        print(f"IoU Threshold: {iou_threshold}")
+
+        # 3. Feature 리스트 만들기
+        gt_features = list(gt_layer.getFeatures())
+        pred_features = list(pred_layer.getFeatures())
+
+        # 4. matching 관리
+        # 하나의 GT Polygon이 여러 Pred와 중복 TP되면 안 됨
+        # 따라서 중복 불가능한 set 사용
+        matched_gt = set()
+        matched_pred = set()
+
+        # 5. polygon matching
+        tp = 0
+
+        # 모든 GT에 대해
+        for gt_idx, gt_feat in enumerate(gt_features):
+            gt_geom = gt_feat.geometry()
+
+            best_iou = 0
+            best_pred_idx = -1
+            
+            # 모든 Pred와 비교 
+            for pred_idx, pred_feat in enumerate(pred_features):
+                if pred_idx in matched_pred:
+                    continue
+                
+                pred_geom = pred_feat.geometry()
+
+                iou = self.calculate_iou(gt_geom, pred_geom)
+
+                if iou > best_iou:
+                    best_iou = iou
+                    best_pred_idx = pred_idx
+            
+            # threshold 이상이면 TP
+            if best_iou >= iou_threshold:
+                tp += 1
+
+                matched_gt.add(gt_idx)
+                matched_pred.add(best_pred_idx)
+
+        # FP / FN 계산 
+        fp = len(pred_features) - len(matched_pred)
+        fn = len(gt_features) - len(matched_gt)
+
+        # Precision / Recall / F1 Score 계산
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1_score = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) > 0 else 0
+        )
+
+        # 결과 출력
+        print(f"TP: {tp}")
+        print(f"FP: {fp}")
+        print(f"FN: {fn}")
+
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall: {recall:.4f}")
+        print(f"F1 Score: {f1_score:.4f}")
+
+        self.label_precision.setText(f"Precision: {precision:.4f}")
+        self.label_recall.setText(f"Recall: {recall:.4f}")
+        self.label_f1Score.setText(f"F1 Score: {f1_score:.4f}")
+
+        # 결과를 csv 파일로 저장
+        self.create_csv(tp, fp, fn, precision, recall, f1_score)
+
+    def calculate_iou(self, geom1, geom2):
+        intersection = geom1.intersection(geom2)
+
+        if intersection.isEmpty():
+            return 0.0
+
+        intersection_area = intersection.area()
+
+        area1 = geom1.area()
+        area2 = geom2.area()
+
+        union_area = area1 + area2 - intersection_area
+
+        if union_area == 0:
+            return 0.0
+
+        iou = intersection_area / union_area
+
+        return iou
+
+    def create_csv(self, tp, fp, fn, precision, recall, f1_score):
+        csv_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "CSV 저장",
+            "C:/Users/user/Desktop/kmj/2026.05/0518 (M)/QGIS 플러그인 개발/result/f1_score",
+            "CSV Files (*.csv)"
+        )
+
+        if csv_path:
+            with open(csv_path, mode="w", newline="", encoding="utf-8-sig") as file:
+                writer = csv.writer(file)
+
+                # 헤더
+                writer.writerow([
+                    "tp",
+                    "fp",
+                    "fn",
+                    "precision",
+                    "recall",
+                    "f1_score"
+                ])
+
+                writer.writerow([
+                    tp,
+                    fp, 
+                    fn,
+                    precision,
+                    recall,
+                    f1_score
+                ])
+            print("csv 저장 완료")
+
+    def check_threshold(self):
+        iou_threshold = self.doubleSpinBox.value()
+
+        if iou_threshold <= 0:
+            self.ok_button.setEnabled(False)
+            self.label_thresholdText.setText("IoU Threshold 값은 0보다 커야 합니다.")
+            self.label_thresholdText.setStyleSheet("color: red;")
+            print("IoU Threshold 값은 0보다 커야함")
+        else:
+            self.ok_button.setEnabled(True)
+            self.label_thresholdText.setText("")
