@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/polygon_evaluator" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>
