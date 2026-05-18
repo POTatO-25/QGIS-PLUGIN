@@ -63,7 +63,7 @@ class CsvCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "SHP 파일 선택",
-            "C:/Users/user/Desktop/kmj/2026.05/0514 (T)/QGIS 플러그인 개발/data",
+            "C:/Users/user/Desktop/kmj/2026.05/0515 (F)/QGIS 플러그인 개발/R409_0/shp",
             "Shape Files (*.shp)"
         )
 

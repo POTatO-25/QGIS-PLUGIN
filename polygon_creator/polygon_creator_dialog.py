@@ -63,7 +63,7 @@ class PolygonCreatorDialog(QtWidgets.QDialog, FORM_CLASS):
         file_path, _ = QFileDialog.getOpenFileName( # QFileDialog.getOpenFileName : 파일 탐색기 열기
             self,
             "CSV 파일 선택", # 창 제목
-            "C:/Users/user/Desktop/kmj/2026.05/0511 (M)/QGIS 플러그인 개발", # 초기 폴더 위치(비워둘 경우 기본 위치)
+            "C:/Users/user/Desktop/kmj/2026.05/0518 (M)/QGIS 플러그인 개발/data", # 초기 폴더 위치(비워둘 경우 기본 위치)
             "CSV Files (*.csv)" # csv 파일만 보이게 필터링
         )
 
