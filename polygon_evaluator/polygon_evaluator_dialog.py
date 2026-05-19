@@ -152,6 +152,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         # 5. polygon matching
         # 각 GT polygon마다 가장 많이 겹치는 Pred polygon 찾기
         tp = 0
+        result_rows = []
 
         # 각 GT polygon마다 가장 IoU가 높은 Pred polygon 하나를 찾고, Threshold 이상이면 TP로 인정
         for gt_idx, gt_feat in enumerate(gt_features): # GT 하나씩 꺼내기
@@ -167,6 +168,15 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     continue
                 
                 pred_geom = pred_feat.geometry()
+
+                # type 가져오기
+                gt_type = str(gt_feat["Shape_Type"]).lower()
+                pred_type = str(pred_feat["type"]).lower()
+
+                # type 다르면 skip
+                if gt_type != pred_type:
+                    continue
+
                 # IoU 계산
                 iou = self.calculate_iou(gt_geom, pred_geom)
 
@@ -174,12 +184,44 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     best_iou = iou
                     best_pred_idx = pred_idx
             
-            # threshold 이상이면 TP
             if best_iou >= iou_threshold:
                 tp += 1
 
                 matched_gt.add(gt_idx)
                 matched_pred.add(best_pred_idx)
+
+                gt_points = self.extract_polygon_points(gt_geom) # 폴리곤 좌표 추출
+
+                pred_geom = pred_features[best_pred_idx].geometry()
+                pred_points = self.extract_polygon_points(pred_geom)
+
+                if len(gt_points) != len(pred_points):
+                    continue
+
+                # 좌표 오차 계산
+                errors = self.calculate_coordinate_errors(
+                    gt_points,
+                    pred_points
+                )
+
+                # 면적 계산
+                gt_area = gt_geom.area()
+                pred_area = pred_geom.area()
+
+                error_geom = gt_geom.symDifference(pred_geom)
+                error_area = error_geom.area()
+
+                # csv 저장용 데이터
+                result_rows.append({
+                    "gt_points": gt_points,
+                    "gt_area": gt_area,
+
+                    "pred_points": pred_points,
+                    "pred_area": pred_area,
+
+                    "errors": errors,
+                    "error_area": error_area
+                })
 
         # FP / FN 계산 
         fp = len(pred_features) - len(matched_pred) # 전체 Pred 개수 - 매칭 성공한 Pred 개수
@@ -207,7 +249,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.label_f1Score.setText(f"F1 Score: {f1_score:.4f}")
 
         # 결과를 csv 파일로 저장
-        self.create_csv(tp, fp, fn, precision, recall, f1_score)
+        self.create_csv(tp, fp, fn, precision, recall, f1_score, result_rows)
 
     # IoU 계산 함수
     def calculate_iou(self, geom1, geom2):
@@ -236,11 +278,11 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         return iou
 
     # csv 파일 생성 함수
-    def create_csv(self, tp, fp, fn, precision, recall, f1_score):
+    def create_csv(self, tp, fp, fn, precision, recall, f1_score, result_rows):
         csv_path, _ = QFileDialog.getSaveFileName(
             self,
             "CSV 저장",
-            "C:/Users/user/Desktop/kmj/2026.05/0518 (M)/QGIS 플러그인 개발/result/f1_score",
+            "C:/Users/user/Desktop/kmj/2026.05/0519 (T)/QGIS 플러그인 개발/result",
             "CSV Files (*.csv)"
         )
 
@@ -250,22 +292,69 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
 
                 # 헤더
                 writer.writerow([
+                    "input(GT)",
+                    "GT area",
+
+                    "reference(Pred)",
+                    "Pred area",
+
+                    "error",
+                    "Error area",
+
+                    "", 
                     "tp",
                     "fp",
                     "fn",
+
                     "precision",
                     "recall",
                     "f1_score"
                 ])
 
-                writer.writerow([
-                    tp,
-                    fp, 
-                    fn,
-                    precision,
-                    recall,
-                    f1_score
-                ])
+                for idx, row in enumerate(result_rows):
+                    # 첫 번째 row에만 metric 저장
+                    if idx == 0:
+                        metric_tp = tp
+                        metric_fp = fp
+                        metric_fn = fn
+
+                        metric_precision = round(precision, 3)
+                        metric_recall = round(recall, 3)
+                        metric_f1 = round(f1_score, 3)
+
+                    # 나머지 row는 빈칸
+                    else:
+                        metric_tp = ""
+                        metric_fp = ""
+                        metric_fn = ""
+
+                        metric_precision = ""
+                        metric_recall = ""
+                        metric_f1 = ""
+                        
+                    writer.writerow([
+                        [(round(x, 3), round(y, 3))
+                        for x, y in row["gt_points"]],
+                        round(row["gt_area"], 3), 
+
+                        [(round(x, 3), round(y, 3))
+                        for x, y in row["pred_points"]],
+                        round(row["pred_area"], 3),
+
+                        [(round(x, 3), round(y, 3))
+                        for x, y in row["errors"]],
+                        round(row["error_area"], 3), 
+
+                        "",
+                        metric_tp,
+                        metric_fp,
+                        metric_fn,
+
+                        metric_precision,
+                        metric_recall,
+                        metric_f1
+                    ])
+                
             print("csv 저장 완료")
 
     def check_threshold(self):
@@ -279,3 +368,60 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         else:
             self.ok_button.setEnabled(True)
             self.label_thresholdText.setText("")
+
+    # polygon 좌표 추출 함수
+    def extract_polygon_points(self, geom):
+        points = []
+
+        # polygon
+        if geom.isMultipart() == False:
+            polygon = geom.asPolygon()
+
+            if not polygon:
+                return []
+
+            ring = polygon[0]
+
+            for pt in ring[:-1]: # 마지막 점이 시작점 반복하기 때문에 마지막 점 제외하기 위해서 -1
+                points.append((pt.x(), pt.y()))
+        else:
+            multipolygon = geom.asMultiPolygon()
+
+            if not multipolygon:
+                return []
+
+            # 첫 번째 polygon만 사용
+            ring = multipolygon[0][0]
+
+            for pt in ring[:-1]:
+                points.append((pt.x(), pt.y()))
+        
+        return points
+
+    # Error 좌표 계산 함수
+    def calculate_coordinate_errors(self, gt_points, pred_points):
+        errors = []
+
+        for gt_pt, pred_pt in zip(gt_points, pred_points):
+            x_error = pred_pt[0] - gt_pt[0]
+            y_error = pred_pt[1] - gt_pt[1]
+
+            errors.append((x_error, y_error))
+
+        return errors
+
+    # # Error polygon 면적 계산 함수
+    # def calculate_error_area(self, error_points):
+    #     if len(error_points) < 3:
+    #         return 0
+        
+    #     qgs_points = []
+
+    #     for x, y in error_points:
+    #         qgs_points.append(QgsPointXY(x, y))
+
+    #     qgs_points.append(qgs_points[0])
+
+    #     error_geom = QgsGeometry.fromPolygonXY([qgs_points])
+
+    #     return error_geom.area()
