@@ -59,10 +59,11 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         self.ok_button = self.button_box.button(QDialogButtonBox.Ok)
         self.button_box.accepted.disconnect() # 기본 dialog 종료 기능 제거
         self.ok_button.clicked.connect(self.evaluate_polygon)
-        self.doubleSpinBox.valueChanged.connect(self.check_threshold)
+        self.doubleSpinBox.valueChanged.connect(self.check_threshold) # IoU 값 바뀔때마다 실행
 
     def load_gt(self):
         print("import GT 버튼 클릭")
+        # 파일 탐색기 열기
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "GT 파일 선택",
@@ -73,6 +74,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         if file_path:
             self.lineEdit_gt.setText(file_path)
             try:
+                # 레이어 이름: gt, ogr: GDAL 라이브러리의 벡터 데이터 읽기 엔진(shapefile 읽는 드라이버)
                 layer = QgsVectorLayer(file_path, "gt", "ogr")
                 if not layer.isValid():
                     print("GT 레이어 읽기 실패")
@@ -119,7 +121,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
             print("파일 경로가 올바르지 않습니다.")
             return
         
-        # 0. Shape 파일 읽기
+        # 0. Shape 파일 읽어서 벡터 레이어 객체 생성
         gt_layer = QgsVectorLayer(file_pathGt, "gt", "ogr")
         pred_layer = QgsVectorLayer(file_pathPred, "pred", "ogr")
 
@@ -129,6 +131,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
 
         # 1. 좌표계 동일한지 확인
         if gt_layer.crs() != pred_layer.crs():
+            print(f"GT crs: {gt_layer.crs()}, Pred crs: {pred_layer.crs()}" )
             print("좌표계가 다릅니다.")
             return
 
@@ -147,10 +150,11 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         matched_pred = set()
 
         # 5. polygon matching
+        # 각 GT polygon마다 가장 많이 겹치는 Pred polygon 찾기
         tp = 0
 
-        # 모든 GT에 대해
-        for gt_idx, gt_feat in enumerate(gt_features):
+        # 모든 GT polygon에 대해 모든 Pred polygon과 비교
+        for gt_idx, gt_feat in enumerate(gt_features): # GT 하나씩 꺼내기
             gt_geom = gt_feat.geometry()
 
             best_iou = 0
