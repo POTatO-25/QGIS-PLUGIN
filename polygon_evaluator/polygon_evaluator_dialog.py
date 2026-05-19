@@ -147,26 +147,27 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         # 하나의 GT Polygon이 여러 Pred와 중복 TP되면 안 됨
         # 따라서 중복 불가능한 set 사용
         matched_gt = set()
-        matched_pred = set()
+        matched_pred = set() # GT와 성공적으로 매칭된 Pred polygon들
 
         # 5. polygon matching
         # 각 GT polygon마다 가장 많이 겹치는 Pred polygon 찾기
         tp = 0
 
-        # 모든 GT polygon에 대해 모든 Pred polygon과 비교
+        # 각 GT polygon마다 가장 IoU가 높은 Pred polygon 하나를 찾고, Threshold 이상이면 TP로 인정
         for gt_idx, gt_feat in enumerate(gt_features): # GT 하나씩 꺼내기
             gt_geom = gt_feat.geometry()
 
-            best_iou = 0
+            best_iou = 0 # 가장 높은 IoU 저장
             best_pred_idx = -1
             
             # 모든 Pred와 비교 
             for pred_idx, pred_feat in enumerate(pred_features):
+                # 이미 사용된 Pred는 건너뜀
                 if pred_idx in matched_pred:
                     continue
                 
                 pred_geom = pred_feat.geometry()
-
+                # IoU 계산
                 iou = self.calculate_iou(gt_geom, pred_geom)
 
                 if iou > best_iou:
@@ -181,8 +182,8 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                 matched_pred.add(best_pred_idx)
 
         # FP / FN 계산 
-        fp = len(pred_features) - len(matched_pred)
-        fn = len(gt_features) - len(matched_gt)
+        fp = len(pred_features) - len(matched_pred) # 전체 Pred 개수 - 매칭 성공한 Pred 개수
+        fn = len(gt_features) - len(matched_gt) # 전체 GT 개수 - 매칭 성공한 GT 개수 = 미탐
 
         # Precision / Recall / F1 Score 계산
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0
@@ -208,17 +209,23 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         # 결과를 csv 파일로 저장
         self.create_csv(tp, fp, fn, precision, recall, f1_score)
 
+    # IoU 계산 함수
     def calculate_iou(self, geom1, geom2):
+        # 실제 겹치는 부분 계산
+        # 여기서 intersection은 겹치는 polygon geometry(객체)
         intersection = geom1.intersection(geom2)
 
         if intersection.isEmpty():
             return 0.0
 
+        # 겹치는 polygon의 실제 면적 계산 
         intersection_area = intersection.area()
 
+        # GT polygon과 Pred polygon의 각 면적 계산
         area1 = geom1.area()
         area2 = geom2.area()
 
+        # 두 polygon의 겹치는 부분 빼줌
         union_area = area1 + area2 - intersection_area
 
         if union_area == 0:
@@ -228,6 +235,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
 
         return iou
 
+    # csv 파일 생성 함수
     def create_csv(self, tp, fp, fn, precision, recall, f1_score):
         csv_path, _ = QFileDialog.getSaveFileName(
             self,
