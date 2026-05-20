@@ -154,7 +154,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         tp = 0
         result_rows = []
 
-        # 각 GT polygon마다 가장 IoU가 높은 Pred polygon 하나를 찾고, Threshold 이상이면 TP로 인정
+        # 각 GT polygon마다 가장 IoU가 높은 Pred polygon 하나를 찾고, Threshold 이상이면서 type이 같으면 TP로 인정
         for gt_idx, gt_feat in enumerate(gt_features): # GT 하나씩 꺼내기
             gt_geom = gt_feat.geometry()
 
@@ -208,7 +208,8 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                 gt_area = gt_geom.area()
                 pred_area = pred_geom.area()
 
-                error_geom = gt_geom.symDifference(pred_geom)
+                # symDifference: 겹치지 않는 부분만 남김
+                error_geom = gt_geom.symDifference(pred_geom) 
                 error_area = error_geom.area()
 
                 # csv 저장용 데이터
@@ -370,6 +371,10 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
             self.label_thresholdText.setText("")
 
     # polygon 좌표 추출 함수
+    # QGIS polygon 구조는 아래와 같음
+    # Polygon
+    #   ㄴ Ring
+    #       ㄴ Points
     def extract_polygon_points(self, geom):
         points = []
 
@@ -402,6 +407,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
     def calculate_coordinate_errors(self, gt_points, pred_points):
         errors = []
 
+        # zip(): 두 리스트를 동시에 순회
         for gt_pt, pred_pt in zip(gt_points, pred_points):
             x_error = pred_pt[0] - gt_pt[0]
             y_error = pred_pt[1] - gt_pt[1]
