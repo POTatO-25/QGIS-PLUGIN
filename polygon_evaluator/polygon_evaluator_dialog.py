@@ -67,7 +67,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "GT 파일 선택",
-            "C:/Users/user/Desktop/kmj/2026.05/0518 (M)/QGIS 플러그인 개발/data/shp/5186",
+            "C:/Users/user/Desktop/kmj/2026.05/0520 (W)/QGIS 플러그인 개발/data/GT",
             "Shape Files (*.shp)"
         )
 
@@ -93,7 +93,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Pred 파일 선택",
-            "C:/Users/user/Desktop/kmj/2026.05/0518 (M)/QGIS 플러그인 개발/data/shp/5186",
+            "C:/Users/user/Desktop/kmj/2026.05/0520 (W)/QGIS 플러그인 개발/data/Pred",
             "Shape Files (*.shp)"
         )
 
@@ -195,8 +195,8 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                 pred_geom = pred_features[best_pred_idx].geometry()
                 pred_points = self.extract_polygon_points(pred_geom)
 
-                if len(gt_points) != len(pred_points):
-                    continue
+                # if len(gt_points) != len(pred_points):
+                #     continue
 
                 # 좌표 오차 계산
                 errors = self.calculate_coordinate_errors(
@@ -283,7 +283,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         csv_path, _ = QFileDialog.getSaveFileName(
             self,
             "CSV 저장",
-            "C:/Users/user/Desktop/kmj/2026.05/0519 (T)/QGIS 플러그인 개발/result",
+            "C:/Users/user/Desktop/kmj/2026.05/0520 (W)/QGIS 플러그인 개발/result",
             "CSV Files (*.csv)"
         )
 
@@ -432,14 +432,46 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         
         return points
 
+    # # Error 좌표 계산 함수
+    # def calculate_coordinate_errors(self, gt_points, pred_points):
+    #     errors = []
+
+    #     # zip(): 두 리스트를 동시에 순회
+    #     for gt_pt, pred_pt in zip(gt_points, pred_points):
+    #         x_error = pred_pt[0] - gt_pt[0]
+    #         y_error = pred_pt[1] - gt_pt[1]
+
+    #         errors.append((x_error, y_error))
+
+    #     return errors
+
     # Error 좌표 계산 함수
+    # GT의 각 점마다 가장 가까운 Pred 점을 찾는 방식
     def calculate_coordinate_errors(self, gt_points, pred_points):
         errors = []
 
-        # zip(): 두 리스트를 동시에 순회
-        for gt_pt, pred_pt in zip(gt_points, pred_points):
-            x_error = pred_pt[0] - gt_pt[0]
-            y_error = pred_pt[1] - gt_pt[1]
+        # GT point 하나씩 순회
+        for gt_pt in gt_points:
+
+            min_distance = float("inf")
+            nearest_pred_pt = None
+
+            # 모든 Pred point와 거리 비교
+            for pred_pt in pred_points:
+
+                dx = pred_pt[0] - gt_pt[0]
+                dy = pred_pt[1] - gt_pt[1]
+
+                distance = (dx ** 2 + dy ** 2) ** 0.5
+
+                # 가장 가까운 점 저장
+                if distance < min_distance:
+                    min_distance = distance
+                    nearest_pred_pt = pred_pt
+
+            # 가장 가까운 Pred 점과의 오차 계산
+            x_error = nearest_pred_pt[0] - gt_pt[0]
+            y_error = nearest_pred_pt[1] - gt_pt[1]
 
             errors.append((x_error, y_error))
 
