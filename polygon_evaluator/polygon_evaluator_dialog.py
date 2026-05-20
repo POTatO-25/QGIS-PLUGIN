@@ -204,9 +204,11 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     pred_points
                 )
 
-                # 면적 계산
-                gt_area = gt_geom.area()
-                pred_area = pred_geom.area()
+                rmse = self.calculate_rmse(errors)
+
+                # 좌표 기반 면적 계산
+                gt_area = self.calculate_polygon_area(gt_points)
+                pred_area = self.calculate_polygon_area(pred_points)
 
                 # symDifference: 겹치지 않는 부분만 남김
                 error_geom = gt_geom.symDifference(pred_geom) 
@@ -221,7 +223,8 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     "pred_area": pred_area,
 
                     "errors": errors,
-                    "error_area": error_area
+                    "error_area": error_area, 
+                    "rmse": rmse
                 })
 
         # FP / FN 계산 
@@ -278,6 +281,29 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
 
         return iou
 
+    # polygon 좌표를 이용한 면적 계산 함수
+    # Shoelace Formula 사용
+    def calculate_polygon_area(self, points):
+        n = len(points)
+
+        # 점이 3개 미만이면 polygon 불가능
+        if n < 3:
+            return 0
+
+        area = 0
+
+        for i in range(n):
+            x1, y1 = points[i]
+
+            # 마지막 점 다음은 첫번째 점
+            x2, y2 = points[(i + 1) % n]
+
+            area += (x1 * y2) - (y1 * x2)
+        
+        area = abs(area) / 2
+
+        return area
+
     # csv 파일 생성 함수
     def create_csv(self, tp, fp, fn, precision, recall, f1_score, result_rows):
         csv_path, _ = QFileDialog.getSaveFileName(
@@ -301,6 +327,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
 
                     "error",
                     "Error area",
+                    "RMSE",
 
                     "", 
                     "tp",
@@ -345,6 +372,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                         [(round(x, 3), round(y, 3))
                         for x, y in row["errors"]],
                         round(row["error_area"], 3), 
+                        round(row["rmse"], 3),
 
                         "",
                         metric_tp,
@@ -476,3 +504,20 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
             errors.append((x_error, y_error))
 
         return errors
+
+    # RMSE 계산 함수
+    def calculate_rmse(self, errors):
+        n = len(errors)
+
+        if n == 0:
+            return 0
+
+        squared_sum = 0
+
+        for dx, dy in errors:
+
+            squared_sum += (dx ** 2) + (dy ** 2)
+
+        rmse = (squared_sum / n) ** 0.5
+
+        return rmse
