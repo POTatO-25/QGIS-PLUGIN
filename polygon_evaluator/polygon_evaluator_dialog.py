@@ -373,23 +373,52 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
     # polygon 좌표 추출 함수
     # QGIS polygon 구조는 아래와 같음
     # Polygon
-    #   ㄴ Ring
-    #       ㄴ Points
+    #   ㄴ Ring(외곽선)
+    #       ㄴ Points(0,0)
+    #       ㄴ Points(10,0)
+    #       ㄴ Points(10,10)
+    #       ㄴ Points(0,10)
+    #       ㄴ Points(0,0) <-- 시작점 반복
     def extract_polygon_points(self, geom):
         points = []
 
-        # polygon
+        # 일반 polygon
         if geom.isMultipart() == False:
             polygon = geom.asPolygon()
 
             if not polygon:
                 return []
 
+            # polygon[0]은 첫 번째 ring을 꺼내는 것임
+            # [
+            #    [ Point(0,0),
+            #      Point(10,0),
+            #      Point(10,10),
+            #      Point(0,10),
+            #      Point(0,0)
+            #    ]
+            # ]
             ring = polygon[0]
 
             for pt in ring[:-1]: # 마지막 점이 시작점 반복하기 때문에 마지막 점 제외하기 위해서 -1
                 points.append((pt.x(), pt.y()))
         else:
+            # MultiPolygon 구조
+            # QGIS polygon 구조는 아래와 같음
+            # MultiPolygon
+            # ㄴ Polygon
+            #    ㄴ Ring(외곽선)
+            #       ㄴ Points
+            # [
+            #    [
+            #       [ Point(0,0),
+            #         Point(10,0),
+            #         Point(10,10),
+            #         Point(0,10),
+            #         Point(0,0)
+            #       ]
+            #    ]
+            # ]
             multipolygon = geom.asMultiPolygon()
 
             if not multipolygon:
@@ -415,19 +444,3 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
             errors.append((x_error, y_error))
 
         return errors
-
-    # # Error polygon 면적 계산 함수
-    # def calculate_error_area(self, error_points):
-    #     if len(error_points) < 3:
-    #         return 0
-        
-    #     qgs_points = []
-
-    #     for x, y in error_points:
-    #         qgs_points.append(QgsPointXY(x, y))
-
-    #     qgs_points.append(qgs_points[0])
-
-    #     error_geom = QgsGeometry.fromPolygonXY([qgs_points])
-
-    #     return error_geom.area()
