@@ -204,6 +204,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                     pred_points
                 )
 
+                # RMSE 계산
                 rmse = self.calculate_rmse(errors)
 
                 # 좌표 기반 면적 계산
@@ -460,19 +461,6 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
         
         return points
 
-    # # Error 좌표 계산 함수
-    # def calculate_coordinate_errors(self, gt_points, pred_points):
-    #     errors = []
-
-    #     # zip(): 두 리스트를 동시에 순회
-    #     for gt_pt, pred_pt in zip(gt_points, pred_points):
-    #         x_error = pred_pt[0] - gt_pt[0]
-    #         y_error = pred_pt[1] - gt_pt[1]
-
-    #         errors.append((x_error, y_error))
-
-    #     return errors
-
     # Error 좌표 계산 함수
     # GT의 각 점마다 가장 가까운 Pred 점을 찾는 방식
     def calculate_coordinate_errors(self, gt_points, pred_points):
@@ -490,6 +478,7 @@ class PolygonEvaluatorDialog(QtWidgets.QDialog, FORM_CLASS):
                 dx = pred_pt[0] - gt_pt[0]
                 dy = pred_pt[1] - gt_pt[1]
 
+                # 유클리드 거리 계산
                 distance = (dx ** 2 + dy ** 2) ** 0.5
 
                 # 가장 가까운 점 저장
